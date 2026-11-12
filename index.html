@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RT60</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500;1,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root {
+  --crema-clara: #FDF8F3;
+  --crema: #F5EBE0;
+  --crema-oscura: #E8DDD0;
+  --salvia-clara: #C5D4C0;
+  --salvia: #9BB08F;
+  --salvia-oscura: #7A9A6D;
+  --terracota-clara: #D4847C;
+  --terracota: #B85C50;
+  --terracota-oscura: #8B3A30;
+  --madera-clara: #D4B896;
+  --madera: #A67B5B;
+  --madera-oscura: #8B6F47;
+  --tinta: #2C2416;
+  --tinta-media: #5C544D;
+  --tinta-suave: #8A817A;
+  --borde: #D4C8BC;
+  --sombra-chica: 0 1px 3px rgba(44, 36, 22, .08);
+  --sombra: 0 4px 12px rgba(44, 36, 22, .12);
+  --r-chico: 6px;
+  --r-medio: 10px;
+  --r-grande: 16px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, var(--crema-clara) 0%, var(--crema) 100%);
+  color: var(--tinta);
+  line-height: 1.5;
+}
+
+.app { display: grid; grid-template-rows: auto 1fr; grid-template-columns: 380px minmax(0, 1fr); height: 100vh; }
+
+.cabecera {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, var(--terracota) 0%, var(--terracota-oscura) 100%);
+  padding: 12px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  box-shadow: var(--sombra);
+  z-index: 10;
+}
+.marca { display: flex; align-items: center; gap: 16px; }
+.marca h1 {
+  font-size: 30px; font-weight: 700; line-height: 1;
+  letter-spacing: -0.5px;
+  color: var(--crema-clara);
+}
+.marca h1 span { font-weight: 500; color: var(--madera-clara); }
+.fuente {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 10px;
+  background: var(--crema-clara);
+  border: 1px solid var(--madera-clara);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .18);
+  font-size: 13px; font-weight: 500;
+  color: var(--tinta-media);
+  white-space: nowrap;
+}
+.fuente svg { width: 17px; height: 17px; color: var(--terracota); flex-shrink: 0; }
+.fuente em { font-style: italic; font-weight: 700; color: var(--terracota-oscura); }
+
+.pestanas { display: flex; gap: 4px; background: rgba(0, 0, 0, .1); padding: 4px; border-radius: var(--r-medio); }
+.pestana {
+  font-family: inherit;
+  padding: 8px 16px; font-size: 12px; font-weight: 600;
+  color: rgba(255, 255, 255, .85);
+  background: transparent; border: none; border-radius: var(--r-chico);
+  cursor: pointer; transition: all .2s ease;
+}
+.pestana.activa { background: var(--crema-clara); color: var(--terracota-oscura); }
+.pestana:hover:not(.activa) { color: #fff; background: rgba(255, 255, 255, .1); }
+
+.boton-cab {
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  padding: 8px 14px; border-radius: var(--r-chico);
+  background: rgba(255, 255, 255, .15); color: var(--crema-clara);
+  border: 1px solid rgba(255, 255, 255, .25);
+  cursor: pointer; transition: all .2s ease;
+}
+.boton-cab:hover { background: rgba(255, 255, 255, .25); }
+
+.lateral {
+  background: var(--crema-clara);
+  border-right: 1px solid var(--borde);
+  padding: 16px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.bloque { background: #fff; border-radius: var(--r-medio); padding: 14px; box-shadow: var(--sombra-chica); border: 1px solid var(--borde); }
+.bloque-tit { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--crema-oscura); }
+.bloque-tit svg { width: 16px; height: 16px; color: var(--terracota); flex-shrink: 0; }
+.bloque-tit h3 { font-size: 13px; font-weight: 600; }
+
+.fila { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 8px; margin-bottom: 4px; }
+.fila + .deslizador + .fila { margin-top: 14px; }
+.fila label { font-size: 12px; color: var(--tinta-media); }
+input[type="number"] {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--borde); border-radius: var(--r-chico);
+  background: var(--crema-clara); color: var(--tinta);
+  text-align: right; width: 100%;
+  transition: all .2s ease;
+}
+input[type="number"]:focus { outline: none; border-color: var(--salvia); background: #fff; box-shadow: 0 0 0 3px rgba(155, 176, 143, .2); }
+.deslizador { width: 100%; height: 6px; -webkit-appearance: none; appearance: none; background: var(--crema-oscura); border-radius: 3px; outline: none; margin-top: 6px; display: block; }
+.deslizador::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--terracota); border-radius: 50%; cursor: pointer; box-shadow: var(--sombra-chica); }
+.deslizador::-moz-range-thumb { width: 16px; height: 16px; background: var(--terracota); border: none; border-radius: 50%; cursor: pointer; }
+
+.selector-modo { display: flex; border: 1px solid var(--borde); border-radius: var(--r-chico); padding: 4px; background: var(--crema-clara); }
+.selector-modo button {
+  flex: 1;
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  padding: 4px 12px; border: none; background: none;
+  color: var(--tinta-media); border-radius: var(--r-chico);
+  cursor: pointer; transition: .3s ease;
+}
+.selector-modo button.activo { background: var(--terracota-oscura); color: #fff; box-shadow: var(--sombra-chica); }
+#cajaPromedio { margin-top: 10px; }
+#avisoSuperficies { font-size: 11px; color: var(--tinta-suave); margin-top: 10px; text-align: center; display: none; }
+
+.proporcion-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.rotulo { font-size: 11px; font-weight: 600; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: .5px; }
+.sello { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; }
+.sello.optima { background: var(--salvia-clara); color: var(--salvia-oscura); }
+.sello.aceptable { background: #EFE3D3; color: var(--madera-oscura); }
+.sello.revisar { background: #F3DCD7; color: var(--terracota-oscura); }
+.razon { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; text-align: center; padding: 8px; }
+.nota-razon { font-size: 10px; color: var(--tinta-suave); text-align: center; }
+
+.resultados { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.tarjeta { background: linear-gradient(135deg, var(--salvia-clara) 0%, var(--salvia) 100%); border-radius: var(--r-medio); padding: 10px 14px; text-align: center; }
+.tarjeta.fuerte { background: linear-gradient(135deg, var(--terracota-clara) 0%, var(--terracota) 100%); grid-column: 1 / -1; }
+.tarjeta small { display: block; font-size: 10px; font-weight: 500; color: #fff; opacity: .9; text-transform: uppercase; }
+.tarjeta small .tal-cual { text-transform: none; }
+.tarjeta b { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #fff; }
+
+.principal { background: var(--crema); display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.vista { display: none; padding: 20px; overflow-y: auto; height: 100%; gap: 20px; flex-direction: column; }
+.vista.activa { display: flex; }
+
+.graficos { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-height: 320px; }
+.marco { background: #fff; border-radius: var(--r-grande); box-shadow: var(--sombra); border: 1px solid var(--borde); padding: 16px; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.marco.sala { background: var(--crema-clara); }
+.marco h2 { font-size: 14px; font-weight: 600; }
+.marco p.sub { font-size: 11px; color: var(--tinta-suave); margin-bottom: 12px; }
+.lienzo { position: relative; flex: 1; min-height: 200px; min-width: 0; }
+.lienzo canvas { max-width: 100%; }
+#contenedorSala { cursor: grab; overflow: hidden; touch-action: none; }
+#contenedorSala.arrastrando { cursor: grabbing; }
+#contenedorSala canvas { display: block; }
+.ayuda {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(44, 36, 22, .8); color: #fff;
+  padding: 6px 12px; border-radius: 15px;
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+  pointer-events: none;
+  transition: opacity .5s ease 2s;
+}
+.ayuda.oculta { opacity: 0; }
+.mandos { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+.mandos button {
+  font-family: inherit;
+  background: #fff; border: 1px solid var(--borde);
+  padding: 5px 10px; font-size: 11px; border-radius: var(--r-chico);
+  cursor: pointer; transition: .2s ease;
+  white-space: nowrap;
+}
+.mandos button:hover { background: var(--crema); border-color: var(--terracota); }
+.mandos button.prendido { background: var(--terracota); border-color: var(--terracota); color: #fff; }
+
+.formulas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.ficha { background: #fff; border-radius: var(--r-medio); padding: 14px 18px; box-shadow: var(--sombra-chica); border: 1px solid var(--borde); }
+.ficha-cab { font-size: 12px; font-weight: 600; color: var(--tinta-suave); letter-spacing: .3px; margin-bottom: 8px; }
+.ecuacion {
+  font-family: 'JetBrains Mono', monospace; font-size: 16px;
+  text-align: center; padding: 12px; margin: 12px 0;
+  background: var(--crema-clara);
+  border: 1px solid var(--crema-oscura); border-radius: var(--r-chico);
+}
+.variables { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--borde); }
+.variables p { font-size: 12px; color: var(--tinta-media); margin-bottom: 8px; }
+.variables span { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--terracota); min-width: 60px; display: inline-block; }
+
+.superficies { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.superficies h4 { font-size: 14px; margin-bottom: 12px; color: var(--terracota-oscura); }
+.sup { display: flex; align-items: center; justify-content: space-between; margin: 0 -8px 6px; padding: 4px 8px; border-radius: var(--r-chico); border: 1px solid transparent; transition: .2s ease; }
+.sup label { font-size: 12px; }
+.sup input { width: 70px; text-align: center; }
+.sup.objetivo { background: var(--crema-clara); border-color: var(--madera-clara); }
+.sup.objetivo label { color: var(--terracota-oscura); font-weight: 600; }
+.materiales { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.materiales button {
+  font-family: inherit; font-size: 11px;
+  padding: 4px 9px;
+  background: var(--crema-clara);
+  border: 1px solid var(--borde); border-radius: var(--r-chico);
+  cursor: pointer; transition: .2s ease;
+}
+.materiales button:hover { background: var(--crema-oscura); border-color: var(--terracota); }
+.materiales button i { font-style: normal; font-family: 'JetBrains Mono', monospace; color: var(--tinta-suave); margin-left: 4px; }
+.texto-chico { font-size: 11px; color: var(--tinta-media); margin-bottom: 10px; }
+.texto-pie { font-size: 10px; margin-top: 10px; color: var(--tinta-suave); }
+#vista-superficies .ficha { margin-top: 0; }
+
+.teoria { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.nota { background: #fff; border-radius: var(--r-medio); padding: 14px; border: 1px solid var(--borde); box-shadow: var(--sombra-chica); }
+.nota h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--terracota-oscura); }
+.nota p, .nota li { font-size: 12px; line-height: 1.6; color: var(--tinta-media); }
+.nota ul { margin: 8px 0 8px 20px; list-style-type: square; }
+.nota li::marker { color: var(--terracota); }
+.nota code { font-family: 'JetBrains Mono', monospace; background: var(--crema-clara); border: 1px solid var(--crema-oscura); padding: 2px 5px; border-radius: 4px; font-size: 11px; }
+
+@media (max-width: 1200px) {
+  .formulas { grid-template-columns: minmax(0, 1fr); }
+  .graficos { min-height: 440px; }
+}
+@media (max-width: 1000px) {
+  html, body { overflow: auto; height: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; height: auto; }
+  .lateral { border-right: none; border-bottom: 1px solid var(--borde); }
+}
+@media (max-width: 768px) {
+  .cabecera { flex-direction: column; gap: 12px; padding: 12px 16px; }
+  .marca { flex-direction: column; gap: 8px; }
+  .fuente { white-space: normal; text-align: center; }
+  .pestanas { width: 100%; justify-content: center; flex-wrap: wrap; }
+  .vista { padding: 12px; }
+  .superficies { grid-template-columns: 1fr; }
+  .ecuacion { font-size: 13px; padding: 10px 6px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="cabecera">
+    <div class="marca">
+      <h1>RT<span>60</span></h1>
+      <div class="fuente">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"></path><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"></path></svg>
+        <span>Basado en <em>Master Handbook of Acoustics</em></span>
+      </div>
+    </div>
+    <nav class="pestanas">
+      <button class="pestana activa" data-pestana="resultados">Resultados y Visualización</button>
+      <button class="pestana" data-pestana="superficies">Detalle de Superficies</button>
+      <button class="pestana" data-pestana="teoria">Guía Teórica</button>
+    </nav>
+    <button class="boton-cab" id="btnReiniciar">Reiniciar</button>
+  </header>
+
+  <aside class="lateral">
+    <section class="bloque">
+      <div class="bloque-tit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <h3>Dimensiones del Recinto (m)</h3>
+      </div>
+      <div class="fila"><label for="largo">Largo (L)</label><input type="number" id="largo" value="7.10" min="2" max="50" step="0.1"></div>
+      <input type="range" class="deslizador" id="largoDesl" min="2" max="50" value="7.10" step="0.1">
+      <div class="fila"><label for="ancho">Ancho (W)</label><input type="number" id="ancho" value="4.88" min="2" max="50" step="0.1"></div>
+      <input type="range" class="deslizador" id="anchoDesl" min="2" max="50" value="4.88" step="0.1">
+      <div class="fila"><label for="alto">Alto (H)</label><input type="number" id="alto" value="3.05" min="2" max="15" step="0.1"></div>
+      <input type="range" class="deslizador" id="altoDesl" min="2" max="15" value="3.05" step="0.1">
+    </section>
+
+    <section class="bloque">
+      <div class="proporcion-cab">
+        <span class="rotulo">Proporción (Bolt)</span>
+        <span class="sello optima" id="selloBolt">Óptima</span>
+      </div>
+      <div class="razon" id="razonBolt">1.00 : 1.60 : 2.33</div>
+      <div class="nota-razon" id="notaBolt">&nbsp;</div>
+    </section>
+
+    <section class="bloque">
+      <div class="bloque-tit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 12.94 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"></path><path d="M10 2c1 .5 2 2 2 5"></path></svg>
+        <h3>Coeficiente de Absorción (α)</h3>
+      </div>
+      <div class="selector-modo">
+        <button id="modoPromedio" class="activo" data-modo="promedio">Promedio</button>
+        <button id="modoSuperficie" data-modo="superficie">Por Superficie</button>
+      </div>
+      <div id="cajaPromedio">
+        <div class="fila"><label for="alfaProm">α Promedio</label><input type="number" id="alfaProm" value="0.20" min="0.01" max="0.99" step="0.01"></div>
+        <input type="range" class="deslizador" id="alfaPromDesl" min="0.01" max="0.99" value="0.20" step="0.01">
+      </div>
+      <p id="avisoSuperficies">Configurá los coeficientes en la pestaña<br>«Detalle de Superficies».</p>
+    </section>
+
+    <section class="bloque">
+      <div class="bloque-tit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <h3>Resultados RT60 @ 500 Hz</h3>
+      </div>
+      <div class="resultados">
+        <div class="tarjeta"><small>Cubicaje (V)</small><b id="valCubicaje">–</b></div>
+        <div class="tarjeta"><small>Superficie (S)</small><b id="valSuperficie">–</b></div>
+        <div class="tarjeta fuerte"><small><span class="tal-cual">α</span> Promedio Efectivo</small><b id="valAlfa">–</b></div>
+        <div class="tarjeta"><small>RT60 Sabine</small><b id="valSabine">–</b></div>
+        <div class="tarjeta"><small>RT60 Eyring</small><b id="valEyring">–</b></div>
+      </div>
+    </section>
+  </aside>
+
+  <main class="principal">
+
+    <div class="vista activa" id="vista-resultados">
+      <div class="graficos">
+        <div class="marco sala">
+          <h2>Visualización del Recinto</h2>
+          <p class="sub">Modelo 3D interactivo</p>
+          <div class="lienzo" id="contenedorSala">
+            <div class="ayuda" id="ayudaSala">Arrastrá para girar · Rueda para acercar</div>
+            <div class="mandos">
+              <button id="btnGirar">Giro automático</button>
+              <button id="btnVista">Vista inicial</button>
+              <button id="btnEjes">Ejes XYZ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="formulas">
+        <div class="ficha">
+          <div class="ficha-cab">Fórmula de Sabine (Everest &amp; Pohlmann, 2009, p. 155)</div>
+          <div class="ecuacion">RT60 = (0.161 × V) / A</div>
+          <div class="variables">
+            <p><span>V:</span> Cubicaje del recinto (m³)</p>
+            <p><span>A:</span> Absorción total (sabins métricos) = Σ(Sᵢ × αᵢ)</p>
+          </div>
+        </div>
+        <div class="ficha">
+          <div class="ficha-cab">Fórmula de Eyring-Norris (Everest &amp; Pohlmann, 2009, p. 157)</div>
+          <div class="ecuacion">RT60 = (0.161 × V) / [−S × ln(1 − ᾱ)]</div>
+          <div class="variables">
+            <p><span>S:</span> Superficie total del recinto (m²)</p>
+            <p><span>ᾱ:</span> Coeficiente de absorción promedio</p>
+            <p><span>ln:</span> Logaritmo natural</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vista" id="vista-superficies">
+      <div class="superficies">
+        <div class="ficha">
+          <h4>Paredes</h4>
+          <div class="sup objetivo"><label for="supFrente">Pared Frontal / Trasera (α)</label><input type="number" id="supFrente" data-sup="frente" value="0.05" min="0" max="1" step="0.01"></div>
+          <div class="sup"><label for="supLaterales">Paredes Laterales (α)</label><input type="number" id="supLaterales" data-sup="laterales" value="0.05" min="0" max="1" step="0.01"></div>
+        </div>
+        <div class="ficha">
+          <h4>Piso y Techo</h4>
+          <div class="sup"><label for="supPiso">Piso (α)</label><input type="number" id="supPiso" data-sup="piso" value="0.02" min="0" max="1" step="0.01"></div>
+          <div class="sup"><label for="supTecho">Techo (α)</label><input type="number" id="supTecho" data-sup="techo" value="0.05" min="0" max="1" step="0.01"></div>
+        </div>
+      </div>
+      <div class="ficha">
+        <div class="ficha-cab">Materiales de Referencia (α @ 500 Hz)</div>
+        <p class="texto-chico">Hacé clic en un material para cargar su valor en la superficie resaltada. Para cambiar de superficie, tocá su casillero.</p>
+        <div class="materiales">
+          <button data-alfa="0.02">Hormigón<i>0.02</i></button>
+          <button data-alfa="0.06">Yeso<i>0.06</i></button>
+          <button data-alfa="0.04">Vidrio<i>0.04</i></button>
+          <button data-alfa="0.10">Madera<i>0.10</i></button>
+          <button data-alfa="0.30">Alfombra delgada<i>0.30</i></button>
+          <button data-alfa="0.60">Alfombra gruesa<i>0.60</i></button>
+          <button data-alfa="0.78">Baldosa acústica (3/4")<i>0.78</i></button>
+          <button data-alfa="0.85">Lana de roca (5 cm)<i>0.85</i></button>
+        </div>
+        <p class="texto-pie">Valores de referencia del Master Handbook of Acoustics, Apéndice.</p>
+      </div>
+    </div>
+
+    <div class="vista" id="vista-teoria">
+      <div class="teoria">
+        <div class="nota"><h4>Crecimiento y Decaimiento del Sonido</h4><p>Cuando una fuente se activa en un recinto, el sonido crece hasta un estado de equilibrio donde la energía emitida iguala a la absorbida. Al cesar la fuente, la energía decae exponencialmente. Este decaimiento es la <strong>reverberación</strong>, un componente crucial del carácter de un espacio. (p. 151-153)</p></div>
+        <div class="nota"><h4>Sabine vs. Eyring-Norris</h4><p>La fórmula de <strong>Sabine</strong> es precisa para salas vivas con absorción distribuida (α &lt; 0.25). Para espacios más muertos, como los estudios, la fórmula de <strong>Eyring-Norris</strong> resulta más exacta, porque considera que una onda reflejada tiene menos probabilidad de impactar sobre una superficie ya absorbente. (p. 157)</p></div>
+        <div class="nota"><h4>Densidad Modal y Coloración</h4><p>En salas pequeñas, las resonancias (modos) de baja frecuencia están muy espaciadas y generan picos y valles que colorean el sonido. Una sala grande tiene mayor densidad modal, lo que suaviza la respuesta. Por debajo de ~300 Hz (Región B), los modos dominan la acústica de las salas pequeñas. (p. 229, 244-245)</p></div>
+        <div class="nota"><h4>Proporciones de Bolt y Modos Axiales</h4><p>Hay que evitar dimensiones que sean múltiplos enteros entre sí (por ejemplo, una sala cúbica): los modos axiales se superponen (degeneración) y aparecen resonancias extremas. Las proporciones de Bolt (ej. 1 : 1.28 : 1.54) buscan una distribución de modos más pareja. (p. 247-248)</p></div>
+        <div class="nota"><h4>Tiempos de Reverberación (RT60) Óptimos</h4><p>El RT60 ideal depende del tamaño y del uso del recinto:</p><ul><li><strong>Locución / Salas de Control:</strong> <code>0.2 s - 0.5 s</code></li><li><strong>Música de Cámara:</strong> <code>0.8 s - 1.4 s</code></li><li><strong>Salas Sinfónicas:</strong> <code>1.8 s - 2.2 s</code></li></ul><p>La inteligibilidad de la palabra exige tiempos cortos; la música se enriquece con la envolvencia de tiempos más largos. (p. 170-171)</p></div>
+        <div class="nota"><h4>Bass Ratio: la Calidez Acústica</h4><p>El Bass Ratio (BR) es el RT60 en bajas frecuencias (promedio 125-250 Hz) dividido por el RT60 en medias (500-1k Hz). Un BR &gt; 1.1 indica una reverberación más larga en graves, percibida como calidez, deseable para música orquestal. Para locución se prefiere un BR cercano a 1.0. (p. 173)</p></div>
+        <div class="nota"><h4>Absorción del Aire</h4><p>En salas grandes, el paso del sonido por el aire suma absorción efectiva y reduce el RT60 en altas frecuencias (&gt; 2 kHz). Se modela agregando el término <code>4mV</code> al denominador de las ecuaciones. En salas pequeñas, este efecto es despreciable. (p. 157-158)</p></div>
+        <div class="nota"><h4>Elevación de Graves (Bass Rise)</h4><p>En estudios de voz se busca un RT60 uniforme en todo el espectro. Sin embargo, la BBC encontró que se tolera cierta elevación en graves: hasta 80 % más en 63 Hz y 20 % más en 125 Hz respecto del valor de referencia en 1 kHz. (p. 172-173)</p></div>
+        <div class="nota"><h4>Initial Time-Delay Gap (ITDG)</h4><p>El ITDG es el tiempo entre el sonido directo y la primera reflexión significativa. Un ITDG corto (&lt; 20 ms) aumenta la sensación de intimidad acústica. Las salas de concierto íntimas tienen ITDG de 12-20 ms; las grandes, de 30-50 ms. (p. 173-174)</p></div>
+        <div class="nota"><h4>Efecto Precedencia (Ley del Primer Frente de Onda)</h4><p>El sistema auditivo localiza el sonido a partir de la primera llegada. Las reflexiones que llegan dentro de los 30-50 ms se fusionan perceptualmente con el sonido directo y aumentan la sonoridad percibida sin generar eco. Es un fenómeno central en el diseño de salas. (p. 59-61)</p></div>
+        <div class="nota"><h4>Distribución de Absorbentes</h4><p>La ubicación del tratamiento acústico afecta mucho el resultado. Los absorbentes distribuidos de manera pareja mejoran la difusión del campo sonoro; concentrarlos en una zona puede crear gradientes de decaimiento y puntos muertos. (p. 131)</p></div>
+        <div class="nota"><h4>Medición del RT60</h4><p>El RT60 se mide excitando la sala con ruido rosa o con un impulso y registrando el decaimiento. Se evalúa el tiempo que tarda en caer 60 dB, aunque es frecuente extrapolarlo desde T20 o T30 (caídas de 20 o 30 dB) a causa del ruido de fondo. (p. 158-160)</p></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+var K_SABINE = 0.161;
+var ALTURA_PERSONA = 1.75;
+
+var proporciones = [
+  { nombre: 'Bolt A', r: [1.00, 1.14, 1.39], ok: false },
+  { nombre: 'Bolt B', r: [1.00, 1.28, 1.54], ok: true },
+  { nombre: 'Bolt C', r: [1.00, 1.60, 2.33], ok: true },
+  { nombre: 'Bolt D', r: [1.00, 1.40, 1.90], ok: true },
+  { nombre: 'Sepmeyer', r: [1.00, 1.30, 1.90], ok: false },
+  { nombre: 'Volkmann', r: [1.00, 1.50, 2.50], ok: true },
+  { nombre: 'Boner', r: [1.00, 1.26, 1.59], ok: true }
+];
+
+var porDefecto = {
+  largo: '7.10', ancho: '4.88', alto: '3.05', alfaProm: '0.20',
+  supFrente: '0.05', supLaterales: '0.05', supPiso: '0.02', supTecho: '0.05'
+};
+
+var modo = 'promedio';
+var supActiva = null;
+
+var escena, camara, motor, sala, ejes;
+var giroAuto = false;
+var huellaSala = '';
+var tirando = false, ultX = 0, ultY = 0;
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+function color(nombre) {
+  return getComputedStyle(document.documentElement).getPropertyValue(nombre).trim();
+}
+
+function num(id, def) {
+  var v = parseFloat(el(id).value);
+  if (isNaN(v) || v <= 0) return def;
+  return v;
+}
+
+function coef(id, def) {
+  var v = parseFloat(el(id).value);
+  if (isNaN(v)) return def;
+  if (v < 0) v = 0;
+  if (v > 1) v = 1;
+  return v;
+}
+
+function medidas() {
+  var L = num('largo', 7.1);
+  var W = num('ancho', 4.88);
+  var H = num('alto', 3.05);
+  var m = { L: L, W: W, H: H };
+  m.V = L * W * H;
+  m.sFrente = 2 * W * H;
+  m.sLat = 2 * L * H;
+  m.sPiso = L * W;
+  m.sTecho = L * W;
+  m.S = m.sFrente + m.sLat + m.sPiso + m.sTecho;
+  return m;
+}
+
+function absorcion(m) {
+  var A, a;
+  if (modo == 'superficie') {
+    A = coef('supFrente', 0.05) * m.sFrente
+      + coef('supLaterales', 0.05) * m.sLat
+      + coef('supPiso', 0.02) * m.sPiso
+      + coef('supTecho', 0.05) * m.sTecho;
+    a = m.S > 0 ? A / m.S : 0;
+  } else {
+    a = coef('alfaProm', 0.2);
+    A = a * m.S;
+  }
+  return { A: A, alfa: a };
+}
+
+function sabine(V, A) {
+  if (!(A > 0)) return null;
+  return K_SABINE * V / A;
+}
+
+function eyring(V, S, a) {
+  if (a >= 1) return 0;
+  if (!(a > 0)) return null;
+  return K_SABINE * V / (-S * Math.log(1 - a));
+}
+
+function fmt(n, dec, unidad) {
+  if (n === null || !isFinite(n)) return '–';
+  return n.toFixed(dec) + (unidad ? ' ' + unidad : '');
+}
+
+function revisarBolt(m) {
+  var lados = [m.H, m.W, m.L];
+  lados.sort(function (a, b) { return a - b; });
+  var r2 = lados[1] / lados[0];
+  var r3 = lados[2] / lados[0];
+
+  el('razonBolt').textContent = '1.00 : ' + r2.toFixed(2) + ' : ' + r3.toFixed(2);
+
+  var mejor = null, dist = Infinity;
+  for (var i = 0; i < proporciones.length; i++) {
+    var p = proporciones[i];
+    var d = Math.abs(p.r[1] - r2) + Math.abs(p.r[2] - r3);
+    if (d < dist) {
+      dist = d;
+      mejor = p;
+    }
+  }
+
+  var sello = el('selloBolt');
+  var nota = el('notaBolt');
+  if (dist < 0.15 && mejor.ok) {
+    sello.textContent = 'Óptima';
+    sello.className = 'sello optima';
+    nota.textContent = 'Cercana a ' + mejor.nombre + '. Distribución modal óptima.';
+  } else if (dist < 0.35) {
+    sello.textContent = 'Aceptable';
+    sello.className = 'sello aceptable';
+    nota.textContent = 'Distribución modal aceptable. Verificar modos axiales.';
+  } else {
+    sello.textContent = 'Revisar';
+    sello.className = 'sello revisar';
+    nota.textContent = 'Proporciones fuera del rango de Bolt. Posibles problemas modales.';
+  }
+}
+
+function recalcular() {
+  var m = medidas();
+  var ab = absorcion(m);
+
+  el('valCubicaje').textContent = fmt(m.V, 1, 'm³');
+  el('valSuperficie').textContent = fmt(m.S, 1, 'm²');
+  el('valAlfa').textContent = fmt(ab.alfa, 2);
+  el('valSabine').textContent = fmt(sabine(m.V, ab.A), 2, 's');
+  el('valEyring').textContent = fmt(eyring(m.V, m.S, ab.alfa), 2, 's');
+
+  revisarBolt(m);
+  if (escena) {
+    var huella = m.L + 'x' + m.W + 'x' + m.H;
+    if (huella != huellaSala) armarSala(m);
+  }
+}
+
+function arrancar3d() {
+  var caja = el('contenedorSala');
+  escena = new THREE.Scene();
+  escena.background = new THREE.Color(color('--crema-clara'));
+
+  var w = caja.clientWidth || 400, h = caja.clientHeight || 300;
+  camara = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
+
+  try {
+    motor = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  } catch (e) {
+    motor = null;
+  }
+  if (!motor) {
+    escena = null;
+    el('ayudaSala').textContent = 'Este navegador no puede mostrar el modelo 3D';
+    return;
+  }
+  motor.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  motor.setSize(w, h);
+  caja.insertBefore(motor.domElement, caja.firstChild);
+
+  escena.add(new THREE.AmbientLight(0xffffff, 0.9));
+  var luz = new THREE.DirectionalLight(0xffffff, 0.6);
+  luz.position.set(5, 10, 7.5);
+  escena.add(luz);
+
+  ejes = new THREE.AxesHelper(5);
+  ejes.visible = false;
+  escena.add(ejes);
+
+  caja.addEventListener('pointerdown', function (e) {
+    if (e.target.tagName == 'BUTTON') return;
+    tirando = true;
+    giroAuto = false;
+    el('btnGirar').classList.remove('prendido');
+    ultX = e.clientX;
+    ultY = e.clientY;
+    caja.classList.add('arrastrando');
+  });
+  window.addEventListener('pointerup', soltar);
+  window.addEventListener('pointercancel', soltar);
+  window.addEventListener('pointermove', function (e) {
+    if (!tirando || !sala) return;
+    sala.rotation.y += (e.clientX - ultX) * 0.007;
+    sala.rotation.x += (e.clientY - ultY) * 0.007;
+    ultX = e.clientX;
+    ultY = e.clientY;
+  });
+  caja.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var m = medidas();
+    var mayor = Math.max(m.L, m.W, m.H);
+    var dist = camara.position.length();
+    var nueva = dist * (e.deltaY > 0 ? 1.08 : 1 / 1.08);
+    if (nueva < mayor * 0.9) nueva = mayor * 0.9;
+    if (nueva > mayor * 5) nueva = mayor * 5;
+    camara.position.setLength(nueva);
+  }, { passive: false });
+
+  el('btnGirar').addEventListener('click', function () {
+    giroAuto = !giroAuto;
+    this.classList.toggle('prendido', giroAuto);
+  });
+  el('btnVista').addEventListener('click', function () {
+    giroAuto = false;
+    el('btnGirar').classList.remove('prendido');
+    if (sala) sala.rotation.set(0.3, -0.5, 0);
+    encuadrar(medidas());
+  });
+  el('btnEjes').addEventListener('click', function () {
+    ejes.visible = !ejes.visible;
+    this.classList.toggle('prendido', ejes.visible);
+  });
+
+  setTimeout(function () { el('ayudaSala').classList.add('oculta'); }, 500);
+  cuadro();
+}
+
+function soltar() {
+  tirando = false;
+  el('contenedorSala').classList.remove('arrastrando');
+}
+
+function liberar(obj) {
+  obj.traverse(function (hijo) {
+    if (hijo.geometry) hijo.geometry.dispose();
+    if (hijo.material) hijo.material.dispose();
+  });
+}
+
+function encuadrar(m) {
+  var mayor = Math.max(m.L, m.W, m.H);
+  camara.position.set(mayor, mayor * 0.7, mayor * 2);
+  camara.lookAt(0, 0, 0);
+}
+
+function armarSala(m) {
+  var giroPrevio = null;
+  if (sala) {
+    giroPrevio = sala.rotation.clone();
+    escena.remove(sala);
+    liberar(sala);
+  }
+
+  var tinta = new THREE.Color(color('--terracota-oscura'));
+  var crema = new THREE.Color(color('--crema-oscura'));
+  sala = new THREE.Group();
+
+  var aristas = new THREE.EdgesGeometry(new THREE.BoxGeometry(m.L, m.H, m.W));
+  sala.add(new THREE.LineSegments(aristas, new THREE.LineBasicMaterial({ color: tinta })));
+
+  var piso = -m.H / 2;
+  var grilla = new THREE.GridHelper(Math.max(m.L, m.W) * 1.5, 10, crema, crema);
+  grilla.position.y = piso;
+  sala.add(grilla);
+
+  var plano = new THREE.Mesh(
+    new THREE.PlaneGeometry(m.L, m.W),
+    new THREE.MeshBasicMaterial({ color: crema, opacity: 0.35, transparent: true, side: THREE.DoubleSide })
+  );
+  plano.rotation.x = -Math.PI / 2;
+  plano.position.y = piso + 0.001;
+  sala.add(plano);
+
+  var cuerpoAlto = ALTURA_PERSONA - 0.24;
+  var piel = new THREE.MeshLambertMaterial({ color: new THREE.Color(color('--salvia')) });
+  var cuerpo = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.1, cuerpoAlto, 8), piel);
+  var cabeza = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), piel);
+  cabeza.position.y = cuerpoAlto / 2 + 0.12;
+  var persona = new THREE.Group();
+  persona.add(cuerpo);
+  persona.add(cabeza);
+  persona.position.y = piso + cuerpoAlto / 2;
+  sala.add(persona);
+
+  if (giroPrevio) sala.rotation.copy(giroPrevio);
+  else sala.rotation.set(0.3, -0.5, 0);
+
+  escena.add(sala);
+  huellaSala = m.L + 'x' + m.W + 'x' + m.H;
+  encuadrar(m);
+}
+
+function cuadro() {
+  requestAnimationFrame(cuadro);
+  if (giroAuto && sala) sala.rotation.y += 0.004;
+  if (motor) motor.render(escena, camara);
+}
+
+function acomodarLienzos() {
+  if (motor) {
+    var caja = el('contenedorSala');
+    if (!caja.clientWidth || !caja.clientHeight) return;
+    camara.aspect = caja.clientWidth / caja.clientHeight;
+    camara.updateProjectionMatrix();
+    motor.setSize(caja.clientWidth, caja.clientHeight);
+  }
+}
+
+function irA(nombre) {
+  var botones = document.querySelectorAll('.pestana');
+  for (var i = 0; i < botones.length; i++) {
+    botones[i].classList.toggle('activa', botones[i].getAttribute('data-pestana') == nombre);
+  }
+  var vistas = document.querySelectorAll('.vista');
+  for (var j = 0; j < vistas.length; j++) {
+    vistas[j].classList.toggle('activa', vistas[j].id == 'vista-' + nombre);
+  }
+  if (nombre == 'resultados') setTimeout(acomodarLienzos, 10);
+}
+
+function ponerModo(cual, saltar) {
+  modo = cual == 'superficie' ? 'superficie' : 'promedio';
+  var esSup = modo == 'superficie';
+  el('modoPromedio').classList.toggle('activo', !esSup);
+  el('modoSuperficie').classList.toggle('activo', esSup);
+  el('cajaPromedio').style.display = esSup ? 'none' : 'block';
+  el('avisoSuperficies').style.display = esSup ? 'block' : 'none';
+  if (esSup && saltar) irA('superficies');
+  recalcular();
+}
+
+function marcarObjetivo(input) {
+  supActiva = input;
+  var filas = document.querySelectorAll('.sup');
+  for (var i = 0; i < filas.length; i++) {
+    filas[i].classList.toggle('objetivo', filas[i].contains(input));
+  }
+}
+
+function reiniciar() {
+  for (var id in porDefecto) {
+    if (porDefecto.hasOwnProperty(id)) el(id).value = porDefecto[id];
+  }
+  el('largoDesl').value = porDefecto.largo;
+  el('anchoDesl').value = porDefecto.ancho;
+  el('altoDesl').value = porDefecto.alto;
+  el('alfaPromDesl').value = porDefecto.alfaProm;
+  marcarObjetivo(el('supFrente'));
+  if (sala) sala.rotation.set(0.3, -0.5, 0);
+  if (camara) encuadrar(medidas());
+  ponerModo('promedio', false);
+}
+
+function enlazar(idNumero, idDesl) {
+  var caja = el(idNumero), desl = el(idDesl);
+  caja.addEventListener('input', function () {
+    desl.value = caja.value;
+    recalcular();
+  });
+  desl.addEventListener('input', function () {
+    caja.value = desl.value;
+    recalcular();
+  });
+}
+
+function conectar() {
+  enlazar('largo', 'largoDesl');
+  enlazar('ancho', 'anchoDesl');
+  enlazar('alto', 'altoDesl');
+  enlazar('alfaProm', 'alfaPromDesl');
+
+  var pest = document.querySelectorAll('.pestana');
+  for (var i = 0; i < pest.length; i++) {
+    pest[i].addEventListener('click', function () {
+      irA(this.getAttribute('data-pestana'));
+    });
+  }
+
+  el('modoPromedio').addEventListener('click', function () { ponerModo('promedio', false); });
+  el('modoSuperficie').addEventListener('click', function () { ponerModo('superficie', true); });
+  el('btnReiniciar').addEventListener('click', reiniciar);
+
+  var sups = document.querySelectorAll('[data-sup]');
+  for (var k = 0; k < sups.length; k++) {
+    sups[k].addEventListener('input', recalcular);
+    sups[k].addEventListener('focus', function () { marcarObjetivo(this); });
+  }
+
+  var mats = document.querySelectorAll('.materiales button');
+  for (var n = 0; n < mats.length; n++) {
+    mats[n].addEventListener('click', function () {
+      var destino = supActiva || el('supFrente');
+      destino.value = this.getAttribute('data-alfa');
+      recalcular();
+    });
+  }
+
+  window.addEventListener('resize', acomodarLienzos);
+}
+
+function iniciar() {
+  conectar();
+  marcarObjetivo(el('supFrente'));
+  if (window.THREE) arrancar3d();
+  ponerModo('promedio', false);
+}
+
+if (document.readyState == 'loading') document.addEventListener('DOMContentLoaded', iniciar);
+else iniciar();
+</script>
+</body>
+</html>
